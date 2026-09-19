@@ -21,6 +21,28 @@ import pickle
 import abc
 import hashlib
 import struct
+import asyncio
+
+
+def _ensure_event_loop():
+    """Make sure the current thread has a usable asyncio event loop.
+
+    pysnmp (and the sync adapter we rely on) reaches for
+    ``asyncio.get_event_loop()`` from synchronous code. On Python 3.10+
+    that call emits a DeprecationWarning when there is no current loop,
+    and on Python 3.12+ it raises ``RuntimeError`` outright. Provision a
+    loop up-front so callers who use this module from a plain script
+    (e.g. the CLI below, ``find_printers.py``, or the Tk GUI) do not
+    have to set one up themselves. If we are already running inside an
+    asyncio program, do nothing.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+
+_ensure_event_loop()
 
 from pysnmp.hlapi.v1arch.asyncio import *
 from pyasn1.type.univ import OctetString as OctetStringType
